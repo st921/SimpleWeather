@@ -8,6 +8,7 @@
 
 import SwiftUI
 
+// データモデル
 struct WeatherData: Codable {
     let current_weather: CurrentWeather
 }
@@ -15,20 +16,20 @@ struct WeatherData: Codable {
 struct CurrentWeather: Codable {
     let temperature: Double
     let weathercode: Int
-    // ★追加：昼(1)か夜(0)かのデータ
     let is_day: Int
+    let windspeed: Double
 }
 
 struct ContentView: View {
     @State private var temperature: String = "---"
     @State private var weatherIcon: String = "questionmark"
     @State private var weatherText: String = "読み込み中..."
-    // 背景色を変えるためにも使えるので、状態として持っておく
+    @State private var windSpeed: String = "-"
     @State private var isDay: Bool = true
     
     var body: some View {
         ZStack {
-            // ★背景色も昼夜で変えてみる（おまけ）
+            // 背景グラデーション
             LinearGradient(
                 gradient: Gradient(colors: isDay ? [.blue, .cyan] : [.black, .gray]),
                 startPoint: .top,
@@ -36,36 +37,74 @@ struct ContentView: View {
             )
             .ignoresSafeArea()
             
-            VStack(spacing: 20) {
-                Image(systemName: weatherIcon)
-                    .font(.system(size: 100))
-                    .symbolRenderingMode(.multicolor)
-                    .padding()
-                    // 影をつけて見やすくする
-                    .shadow(color: .white.opacity(0.5), radius: 10)
+            VStack(spacing: 30) {
+                // メインの天気表示
+                VStack(spacing: 10) {
+                    Image(systemName: weatherIcon)
+                        .font(.system(size: 100))
+                        .symbolRenderingMode(.multicolor)
+                        .shadow(color: .white.opacity(0.5), radius: 10)
+                    
+                    Text(weatherText)
+                        .font(.title)
+                        .bold()
+                        .foregroundColor(.white)
+                    
+                    Text("\(temperature) ℃")
+                        .font(.system(size: 70, weight: .bold))
+                        .foregroundColor(.white)
+                }
+                .padding(.top, 50)
                 
-                Text(weatherText)
-                    .font(.title)
-                    .bold()
-                    .foregroundColor(.white) // 背景があっても見えるように白文字
+                // 詳細データのパネル
+                HStack(spacing: 20) {
+                    VStack {
+                        Image(systemName: "wind")
+                            .font(.title)
+                            .foregroundColor(.white)
+                        Text("風速")
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.8))
+                        Text("\(windSpeed) m/s")
+                            .font(.headline)
+                            .bold()
+                            .foregroundColor(.white)
+                    }
+                    .frame(width: 100, height: 100)
+                    .background(Color.white.opacity(0.2))
+                    .cornerRadius(15)
+                    
+                    VStack {
+                        Image(systemName: "location.fill")
+                            .font(.title)
+                            .foregroundColor(.white)
+                        Text("場所")
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.8))
+                        Text("東京")
+                            .font(.headline)
+                            .bold()
+                            .foregroundColor(.white)
+                    }
+                    .frame(width: 100, height: 100)
+                    .background(Color.white.opacity(0.2))
+                    .cornerRadius(15)
+                }
                 
-                Text("\(temperature) ℃")
-                    .font(.system(size: 60, weight: .bold))
-                    .foregroundColor(.white)
+                Spacer()
                 
                 Button(action: {
                     Task { await fetchWeather() }
                 }) {
-                    Text("更新する")
+                    Text("情報を更新")
                         .padding()
-                        .background(Color.white.opacity(0.2)) // 半透明ボタン
-                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .background(Color.white)
+                        .foregroundColor(.blue)
                         .cornerRadius(10)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 10)
-                                .stroke(Color.white, lineWidth: 1)
-                        )
+                        .padding(.horizontal)
                 }
+                .padding(.bottom)
             }
         }
         .task {
@@ -73,8 +112,8 @@ struct ContentView: View {
         }
     }
     
+    // データ取得関数
     func fetchWeather() async {
-        // URLは同じ
         let urlString = "https://api.open-meteo.com/v1/forecast?latitude=35.6895&longitude=139.6917&current_weather=true"
         guard let url = URL(string: urlString) else { return }
         
@@ -86,13 +125,13 @@ struct ContentView: View {
                 let current = decodedData.current_weather
                 
                 self.temperature = String(current.temperature)
-                // 1ならtrue(昼)、0ならfalse(夜)
+                self.windSpeed = String(current.windspeed)
+                
                 let isDaytime = current.is_day == 1
                 self.isDay = isDaytime
                 
-                // アイコンを決める関数に「昼か夜か」の情報も渡す
+                // ここでエラーが出ていたはずです
                 self.weatherIcon = getWeatherIconName(code: current.weathercode, isDay: isDaytime)
-                
                 self.weatherText = getWeatherDescription(code: current.weathercode)
             }
             
@@ -101,18 +140,16 @@ struct ContentView: View {
         }
     }
     
-    // ★引数に isDay: Bool を追加
+    // ★ここが抜けていませんでしたか？
+    // アイコン変換
     func getWeatherIconName(code: Int, isDay: Bool) -> String {
-        // もし「夜」なら、特定のアイコンを月にする
         if !isDay {
             switch code {
-            case 0: return "moon.stars.fill"       // 夜の快晴
-            case 1, 2, 3: return "cloud.moon.fill" // 夜の曇り
-            default: break // 雨などは昼夜共通にする（そのまま下のswitchへ）
+            case 0: return "moon.stars.fill"
+            case 1, 2, 3: return "cloud.moon.fill"
+            default: break
             }
         }
-        
-        // 昼（または夜でも雨など共通のもの）
         switch code {
         case 0: return "sun.max.fill"
         case 1, 2, 3: return "cloud.sun.fill"
@@ -125,6 +162,7 @@ struct ContentView: View {
         }
     }
     
+    // 天気名変換
     func getWeatherDescription(code: Int) -> String {
         switch code {
         case 0: return "快晴"
