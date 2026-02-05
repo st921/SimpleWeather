@@ -162,6 +162,7 @@ struct ContentView: View {
         }
     }
     
+    // ★エラーの原因だった関数
     // 天気名変換
     func getWeatherDescription(code: Int) -> String {
         switch code {
