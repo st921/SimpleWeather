@@ -130,7 +130,6 @@ struct ContentView: View {
                 let isDaytime = current.is_day == 1
                 self.isDay = isDaytime
                 
-                // ここでエラーが出ていたはずです
                 self.weatherIcon = getWeatherIconName(code: current.weathercode, isDay: isDaytime)
                 self.weatherText = getWeatherDescription(code: current.weathercode)
             }
@@ -140,7 +139,6 @@ struct ContentView: View {
         }
     }
     
-    // ★ここが抜けていませんでしたか？
     // アイコン変換
     func getWeatherIconName(code: Int, isDay: Bool) -> String {
         if !isDay {
@@ -162,7 +160,6 @@ struct ContentView: View {
         }
     }
     
-    // ★エラーの原因だった関数
     // 天気名変換
     func getWeatherDescription(code: Int) -> String {
         switch code {
